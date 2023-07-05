@@ -1,0 +1,17 @@
+{
+    "metrics_train": {
+        "R2": 0.7767206257460865,
+        "mse": 0.19425813853740692,
+        "mae": 0.33833396434783936
+    },
+    "metrics_test": {
+        "R2": 0.744217954259744,
+        "mse": 0.264036625623703,
+        "mae": 0.39422842860221863
+    },
+    "model_params": {
+        "likelihood.noise": 0.050851382315158844,
+        "covar_module.base_kernel.outputscale": 0.5881668925285339,
+        "mean_module.constant": -7.206706523895264
+    }
+}
