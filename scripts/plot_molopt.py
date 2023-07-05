@@ -4,7 +4,7 @@ import argparse
 import functools
 import json
 import math
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict, defaultdict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -14,19 +14,19 @@ from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from tqdm.auto import tqdm
 
-plt.rcParams.update({'font.size': 6})
+plt.rcParams.update({"font.size": 6})
 
 colors = [
-    '#1f77b4',  # muted blue
-    '#d62728',  # brick red
-    '#ff7f0e',  # safety orange
-    '#2ca02c',  # cooked asparagus green
-    '#9467bd',  # muted purple
-    '#8c564b',  # chestnut brown
-    '#e377c2',  # raspberry yogurt pink
-    '#7f7f7f',  # middle gray
-    '#bcbd22',  # curry yellow-green
-    '#17becf',  # blue-teal
+    "#1f77b4",  # muted blue
+    "#d62728",  # brick red
+    "#ff7f0e",  # safety orange
+    "#2ca02c",  # cooked asparagus green
+    "#9467bd",  # muted purple
+    "#8c564b",  # chestnut brown
+    "#e377c2",  # raspberry yogurt pink
+    "#7f7f7f",  # middle gray
+    "#bcbd22",  # curry yellow-green
+    "#17becf",  # blue-teal
 ]
 
 METHOD_NAME_REMAP = {
@@ -87,7 +87,7 @@ def _get_min_median_max(method_res_list, plot_metric=top1_so_far, is_min=True):
 
 def batch_tanimoto_numpy(fp_arr1, fp_arr2):
     fp_int = fp_arr1 @ fp_arr2.T
-    fp_union = (np.sum(fp_arr1, axis=1, keepdims=True) + np.sum(fp_arr2, axis=1, keepdims=True).T - fp_int)
+    fp_union = np.sum(fp_arr1, axis=1, keepdims=True) + np.sum(fp_arr2, axis=1, keepdims=True).T - fp_int
     return fp_int / fp_union
 
 
@@ -150,13 +150,14 @@ def main():
     # Scaffolds
     if args.scaffolds:
         df["gen-scaffold"] = [
-            Chem.MolToSmiles(MurckoScaffold.MakeScaffoldGeneric(MurckoScaffold.GetScaffoldForMol(
-                Chem.MolFromSmiles(s)))) for s in tqdm(list(df["smiles"]), desc="Calculating train set scaffolds")
+            Chem.MolToSmiles(
+                MurckoScaffold.MakeScaffoldGeneric(MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(s)))
+            )
+            for s in tqdm(list(df["smiles"]), desc="Calculating train set scaffolds")
         ]
-        train_set_scaffolds = set(df["gen-scaffold"])
+        set(df["gen-scaffold"])
     if args.fingerprints:
-        train_set_fingerprints = np.stack(
-            [_get_numpy_fp(s) for s in tqdm(df["smiles"].values, desc="Calculating fingerprints.")])
+        np.stack([_get_numpy_fp(s) for s in tqdm(df["smiles"].values, desc="Calculating fingerprints.")])
 
     # Read in BO results
     protein_res_dict = defaultdict(dict)
@@ -164,7 +165,6 @@ def main():
     assert results_path.exists()
     for method_res_dir in sorted(results_path.iterdir()):
         for protein_res_dir in sorted(method_res_dir.iterdir()):
-
             res_jsons = []
             for res_file in protein_res_dir.glob("*.json"):
                 with open(res_file) as f:
@@ -178,13 +178,15 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    PLOT_OBJECTIVES = OrderedDict([
-        ("F2_qed-pen-v3", "F2"),
-        ("PPAR-all_qed-pen-v3", "Promiscuous PPAR"),
-        ("JAK2-not-LCK-v2_qed-pen-v3", "Selective JAK2"),
-        ("logP", "logP"),
-        ("QED", "QED"),
-    ])
+    PLOT_OBJECTIVES = OrderedDict(
+        [
+            ("F2_qed-pen-v3", "F2"),
+            ("PPAR-all_qed-pen-v3", "Promiscuous PPAR"),
+            ("JAK2-not-LCK-v2_qed-pen-v3", "Selective JAK2"),
+            ("logP", "logP"),
+            ("QED", "QED"),
+        ]
+    )
 
     fig_width = 5.50107  # inches, NeurIPS template
     fig_height = 2.4
@@ -201,7 +203,7 @@ def main():
         else:
             dataset_best = df[obj].min()
 
-        ax.axhline(dataset_best, color="k", linestyle="--", label='Dataset best')
+        ax.axhline(dataset_best, color="k", linestyle="--", label="Dataset best")
         for method_name, method_res_list in protein_res_dict[obj].items():
             assert len(method_res_list) == 3  # should always be 3 replicates
             mn, md, mx = _get_min_median_max(
@@ -210,7 +212,7 @@ def main():
                 is_min=obj not in MAXIMIZATION_OBJECTIVES,
             )
 
-            if obj == 'QED':
+            if obj == "QED":
                 mn /= 10.0
                 md /= 10.0
                 mx /= 10.0
@@ -218,11 +220,11 @@ def main():
             ax.plot(md, label=METHOD_NAME_REMAP[method_name])
             ax.fill_between(range(len(md)), mn, mx, alpha=0.3)
 
-        if obj in ['F2_qed-pen-v3', 'PPAR-all_qed-pen-v3']:
+        if obj in ["F2_qed-pen-v3", "PPAR-all_qed-pen-v3"]:
             ax.set_ylim(-12, -7.5)
-        elif obj == 'JAK2-not-LCK-v2_qed-pen-v3':
+        elif obj == "JAK2-not-LCK-v2_qed-pen-v3":
             ax.set_ylim(-10, -7.5)
-        elif obj == 'QED':
+        elif obj == "QED":
             ax.set_ylim(0.5, 1.0)
 
         ax.set_title(PLOT_OBJECTIVES[obj])
@@ -230,11 +232,11 @@ def main():
     axes[-2].legend()
     axes[-1].remove()
 
-    axes[0].set_ylabel('Objective')
-    axes[3].set_ylabel('Objective')
+    axes[0].set_ylabel("Objective")
+    axes[3].set_ylabel("Objective")
 
     # Figure saving
-    fig.savefig(output_dir / f'molopt_top{n}.pdf')
+    fig.savefig(output_dir / f"molopt_top{n}.pdf")
 
 
 if __name__ == "__main__":

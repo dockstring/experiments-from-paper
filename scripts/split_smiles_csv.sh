@@ -21,7 +21,7 @@ for tmp_split_file in "$out_dir/"*"${tmp_suffix}" ; do
     first_line="$(head -n 1 ${tmp_split_file})"
     if [[ "$first_line" == *"smiles"* ]] ; then
 
-        # Already has header --> just rename    
+        # Already has header --> just rename
         mv "$tmp_split_file" "$new_name"
         stored_header="$first_line"
     else

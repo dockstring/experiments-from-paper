@@ -3,19 +3,19 @@ import argparse
 import pandas as pd
 from matplotlib import pyplot as plt
 
-plt.rcParams.update({'font.size': 6})
+plt.rcParams.update({"font.size": 6})
 
 colors = [
-    '#1f77b4',  # muted blue
-    '#d62728',  # brick red
-    '#ff7f0e',  # safety orange
-    '#2ca02c',  # cooked asparagus green
-    '#9467bd',  # muted purple
-    '#8c564b',  # chestnut brown
-    '#e377c2',  # raspberry yogurt pink
-    '#7f7f7f',  # middle gray
-    '#bcbd22',  # curry yellow-green
-    '#17becf',  # blue-teal
+    "#1f77b4",  # muted blue
+    "#d62728",  # brick red
+    "#ff7f0e",  # safety orange
+    "#2ca02c",  # cooked asparagus green
+    "#9467bd",  # muted purple
+    "#8c564b",  # chestnut brown
+    "#e377c2",  # raspberry yogurt pink
+    "#7f7f7f",  # middle gray
+    "#bcbd22",  # curry yellow-green
+    "#17becf",  # blue-teal
 ]
 
 # yapf: disable
@@ -34,28 +34,28 @@ targets = [
 
 def parse_args(args=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', help='path to dataset file', required=True)
-    parser.add_argument('--overlap', help='path to overlap file', required=True)
+    parser.add_argument("--dataset", help="path to dataset file", required=True)
+    parser.add_argument("--overlap", help="path to overlap file", required=True)
     return parser.parse_args(args=args)
 
 
 def main() -> None:
     args = parse_args()
 
-    ref = 'LCK'
+    ref = "LCK"
     # others = targets.copy()
     # others.remove(ref)
-    others = ['HSD11B1', 'PDE5A', 'PTGS2', 'PTPN1', 'PARP1']
+    others = ["HSD11B1", "PDE5A", "PTGS2", "PTPN1", "PARP1"]
 
-    dataset = pd.read_csv(args.dataset, sep='\t')
-    overlap = pd.read_csv(args.overlap, sep='\t')
+    dataset = pd.read_csv(args.dataset, sep="\t")
+    overlap = pd.read_csv(args.overlap, sep="\t")
 
-    dataset = dataset.set_index('inchikey')
-    overlap = overlap.set_index('inchikey')
+    dataset = dataset.set_index("inchikey")
+    overlap = overlap.set_index("inchikey")
 
     # Slice
     overlap = overlap.loc[dataset.index]
-    actives = overlap.loc[overlap[ref + '_label'] == 'A']
+    actives = overlap.loc[overlap[ref + "_label"] == "A"]
 
     selection = dataset.loc[actives.index]
 
@@ -68,29 +68,29 @@ def main() -> None:
         bins=25,
         color=colors[0],
         label=ref,
-        histtype='stepfilled',
+        histtype="stepfilled",
         alpha=0.75,
         density=True,
-        edgecolor='black',
+        edgecolor="black",
     )
 
     ax.hist(
         selection[others].values.flatten(),
         bins=25,
         color=colors[1],
-        label='others',
-        histtype='stepfilled',
+        label="others",
+        histtype="stepfilled",
         alpha=0.75,
         density=True,
-        edgecolor='black',
+        edgecolor="black",
     )
 
-    ax.set_xlabel('Score')
-    ax.set_ylabel('Density')
+    ax.set_xlabel("Score")
+    ax.set_ylabel("Density")
     ax.legend()
 
-    fig.savefig('hists.pdf')
+    fig.savefig("hists.pdf")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

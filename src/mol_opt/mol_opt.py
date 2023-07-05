@@ -3,19 +3,24 @@ import functools
 import math
 from typing import Tuple
 
+import dockstring
 import numpy as np
 import pandas as pd
-import dockstring
-
 from dockstring_data import DATASET_PATH, process_dataframe
+from function_utils import CachedFunction
 from mol_funcs.dockstring_funcs import safe_dock_function
 from mol_funcs.simple_funcs import (
-    logP as logP_fn,
     QED as qed_fn,
+)
+from mol_funcs.simple_funcs import (
     guacamol_funcs,
+)
+from mol_funcs.simple_funcs import (
+    logP as logP_fn,
+)
+from mol_funcs.simple_funcs import (
     molecular_weight as mol_wt_fn,
 )
-from function_utils import CachedFunction
 
 # Potential objective functions
 FNAME_LOGP = "logP"
@@ -60,7 +65,6 @@ def _add_molwt_pen_v1(score_dict, prev_scoring_fn):
 
 
 def _add_qed_pen_v1(score_dict, prev_scoring_fn):
-
     # Penalty is multiplying by QED
     score_dict_copy = dict(score_dict)
     qed = score_dict_copy.pop(FNAME_QED)
@@ -69,7 +73,6 @@ def _add_qed_pen_v1(score_dict, prev_scoring_fn):
 
 
 def _add_qed_pen_v2(score_dict, prev_scoring_fn):
-
     # Penalty is multiplying by QED
     score_dict_copy = dict(score_dict)
     qed = score_dict_copy.pop(FNAME_QED)
@@ -79,7 +82,6 @@ def _add_qed_pen_v2(score_dict, prev_scoring_fn):
 
 
 def _add_qed_pen_v3(score_dict, prev_scoring_fn):
-
     # Penalty + 10 * (1-QED)
     score_dict_copy = dict(score_dict)
     qed = score_dict_copy.pop(FNAME_QED)
@@ -88,7 +90,6 @@ def _add_qed_pen_v3(score_dict, prev_scoring_fn):
 
 
 def _add_qed_pen_v4(score_dict, prev_scoring_fn):
-
     # Penalty + 30 * (1-QED)
     score_dict_copy = dict(score_dict)
     qed = score_dict_copy.pop(FNAME_QED)
@@ -97,7 +98,6 @@ def _add_qed_pen_v4(score_dict, prev_scoring_fn):
 
 
 def _jak2_not_lck_v1(score_dict):
-
     # Selectivity towards JAK2 and not LCK, with a penalty for not binding to JAK2 well
     jak2 = score_dict["JAK2"]
     lck = score_dict["LCK"]
@@ -107,7 +107,6 @@ def _jak2_not_lck_v1(score_dict):
 
 
 def _jak2_not_lck_v2(score_dict):
-
     # Selectivity towards JAK2, with a penalty for binding well to LCK
     jak2 = score_dict["JAK2"]
     lck = score_dict["LCK"]
@@ -129,7 +128,6 @@ def get_cached_objective_and_dataframe(
     dock_kwargs: dict = None,
     process_df_kwargs: dict = None,
 ) -> Tuple[CachedFunction, pd.DataFrame,]:
-
     # Handle various kwargs
     if dock_kwargs is None:
         dock_kwargs = dict()
@@ -163,27 +161,19 @@ def get_cached_objective_and_dataframe(
     # Which things are calculated to make the score?
     items_to_calculate = dict()
     if objective_name in DOCKING_TARGETS:
-        items_to_calculate[objective_name] = _get_safe_dock_function(
-            objective_name, **dock_kwargs
-        )
+        items_to_calculate[objective_name] = _get_safe_dock_function(objective_name, **dock_kwargs)
         scalar_fn = _sum_scalarization
     elif objective_name == "PPAR-all":
         for protein in ["PPARG", "PPARD", "PPARA"]:
-            items_to_calculate[protein] = _get_safe_dock_function(
-                protein, **dock_kwargs
-            )
+            items_to_calculate[protein] = _get_safe_dock_function(protein, **dock_kwargs)
         scalar_fn = _max_scalarization
     elif objective_name == "JAK2-not-LCK-v1":
         for protein in ["JAK2", "LCK"]:
-            items_to_calculate[protein] = _get_safe_dock_function(
-                protein, **dock_kwargs
-            )
+            items_to_calculate[protein] = _get_safe_dock_function(protein, **dock_kwargs)
         scalar_fn = _jak2_not_lck_v1
     elif objective_name == "JAK2-not-LCK-v2":
         for protein in ["JAK2", "LCK"]:
-            items_to_calculate[protein] = _get_safe_dock_function(
-                protein, **dock_kwargs
-            )
+            items_to_calculate[protein] = _get_safe_dock_function(protein, **dock_kwargs)
         scalar_fn = _jak2_not_lck_v2
     elif objective_name in GUACAMOL_FUNCTIONS:
         items_to_calculate[objective_name] = guacamol_funcs[objective_name]
@@ -224,9 +214,7 @@ def get_cached_objective_and_dataframe(
     if evaluate_cheap_functions:
         targets_to_process -= set(CHEAP_FUNCTIONS)
     targets_to_process = list(targets_to_process)
-    dataset_processed = process_dataframe(
-        dataset, targets=targets_to_process, **process_df_kwargs
-    )
+    dataset_processed = process_dataframe(dataset, targets=targets_to_process, **process_df_kwargs)
 
     # Potentially evaluate cheap targets
     for fname, f in items_to_calculate.items():
@@ -237,9 +225,7 @@ def get_cached_objective_and_dataframe(
     # Now produce start cache with all values known
     start_cache = dict()
     for _, row in dataset_processed.iterrows():
-        start_cache[row.smiles] = {
-            fname: row[fname] for fname in items_to_calculate.keys()
-        }
+        start_cache[row.smiles] = {fname: row[fname] for fname in items_to_calculate.keys()}
 
     # Define final objective!
     def objective(smiles: str) -> dict:
@@ -247,7 +233,6 @@ def get_cached_objective_and_dataframe(
 
     # Define the transform that scalarized this function (into something to be minimized)
     def scalarize(score_dict):
-
         # If there are NaNs then the score is undefined
         if keep_nan and any(np.isnan(score) for score in score_dict.values()):
             return math.nan
@@ -284,15 +269,12 @@ def get_cached_objective_and_dataframe(
         v = scalarize(score_dict)
         return sign_fn(v)
 
-    cached_objective = CachedFunction(
-        objective, cache=start_cache, transform=final_transform
-    )
+    cached_objective = CachedFunction(objective, cache=start_cache, transform=final_transform)
 
     return cached_objective, dataset_processed
 
 
 def get_base_molopt_parser():
-
     parser = argparse.ArgumentParser(add_help=False)
 
     parser.add_argument(
@@ -301,19 +283,14 @@ def get_base_molopt_parser():
         required=True,
         help="Objective to optimize.",
     )
-    parser.add_argument(
-        "--dataset", type=str, default=DATASET_PATH, help="Path to dataset tsv file."
-    )
+    parser.add_argument("--dataset", type=str, default=DATASET_PATH, help="Path to dataset tsv file.")
     parser.add_argument(
         "--max_func_calls",
         type=int,
         default=None,
-        help="Maximum number of calls to objective function. "
-        "Default is no explicit maximum.",
+        help="Maximum number of calls to objective function. " "Default is no explicit maximum.",
     )
-    parser.add_argument(
-        "--output_path", type=str, required=True, help="Path to output file (json)."
-    )
+    parser.add_argument("--output_path", type=str, required=True, help="Path to output file (json).")
     parser.add_argument(
         "--num_cpu",
         type=int,

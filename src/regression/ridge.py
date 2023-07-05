@@ -3,18 +3,16 @@ import functools
 import json
 from pathlib import Path
 
-from sklearn.linear_model import Ridge
-from sklearn.model_selection import RandomizedSearchCV
+import dockstring_data
 import numpy as np
 import pandas as pd
-
-import dockstring_data
 from regression.regression_utils import (
+    eval_regression,
     get_regression_parser,
     split_dataframe_train_test,
-    eval_regression,
 )
-
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import RandomizedSearchCV
 
 SAVE_FILE_NAME = "weights.npz"
 
@@ -42,7 +40,6 @@ def get_dataset(df: pd.DataFrame, target=None):
 
 
 def get_trained_model(train_dataset, num_models):
-
     X_train, y_train = train_dataset
 
     # Fit model using CV search
@@ -84,7 +81,6 @@ def load_model(save_dir):
 
 
 if __name__ == "__main__":
-
     # Arguments
     parser = argparse.ArgumentParser(parents=[get_parser(), get_regression_parser()])
     args = parser.parse_args()
@@ -100,9 +96,7 @@ if __name__ == "__main__":
         df_train = pd.read_csv(args.dataset, sep="\t", header=0)
         df_test = None
     else:
-        df_train, df_test = split_dataframe_train_test(
-            args.dataset, args.data_split, n_train=args.n_train
-        )
+        df_train, df_test = split_dataframe_train_test(args.dataset, args.data_split, n_train=args.n_train)
         df_test = process_df(df_test)
     df_train = process_df(df_train)
 

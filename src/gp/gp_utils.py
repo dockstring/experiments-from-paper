@@ -1,11 +1,11 @@
 """ Various GP utility functions """
 
+import botorch
+import gpytorch
 import numpy as np
 import torch
-import gpytorch
-from gpytorch.models import ExactGP
 from gpytorch.mlls import ExactMarginalLogLikelihood
-import botorch
+from gpytorch.models import ExactGP
 
 from .tanimoto_gp import TanimotoGP
 

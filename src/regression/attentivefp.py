@@ -3,18 +3,16 @@ import functools
 import json
 import logging
 
-import pandas as pd
-import numpy as np
 import deepchem as dc
-from deepchem.models.torch_models import AttentiveFPModel
-
 import dockstring_data
+import numpy as np
+import pandas as pd
+from deepchem.models.torch_models import AttentiveFPModel
 from regression.regression_utils import (
+    eval_regression,
     get_regression_parser,
     split_dataframe_train_test,
-    eval_regression,
 )
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,7 +24,6 @@ def get_parser():
 
 
 def get_dataset(df: pd.DataFrame, target=None):
-
     # Get SMILES and properties
     smiles = list(map(str, df["smiles"].values))
     if target is None:
@@ -42,9 +39,7 @@ def get_dataset(df: pd.DataFrame, target=None):
 
 
 def _get_model():
-    model = AttentiveFPModel(
-        mode="regression", n_tasks=1, batch_size=32, learning_rate=0.001
-    )
+    model = AttentiveFPModel(mode="regression", n_tasks=1, batch_size=32, learning_rate=0.001)
     return model
 
 
@@ -69,7 +64,6 @@ def load_model(save_dir):
 
 
 if __name__ == "__main__":
-
     # Arguments
     parser = argparse.ArgumentParser(parents=[get_parser(), get_regression_parser()])
     args = parser.parse_args()
@@ -85,9 +79,7 @@ if __name__ == "__main__":
         df_train = pd.read_csv(args.dataset, sep="\t", header=0)
         df_test = None
     else:
-        df_train, df_test = split_dataframe_train_test(
-            args.dataset, args.data_split, n_train=args.n_train
-        )
+        df_train, df_test = split_dataframe_train_test(args.dataset, args.data_split, n_train=args.n_train)
         df_test = process_df(df_test)
     df_train = process_df(df_train)
 

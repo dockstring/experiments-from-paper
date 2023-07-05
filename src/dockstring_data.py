@@ -3,7 +3,6 @@
 from typing import List
 
 import pandas as pd
-
 from fingerprints import smiles_to_fp_array
 
 DATASET_PATH = "./data/dockstring-excape/dockstring-dataset.tsv"

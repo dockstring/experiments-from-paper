@@ -4,8 +4,7 @@ import logging
 import pickle
 
 import pandas as pd
-
-from graph_ga.graph_ga import run_ga_maximization, ga_logger
+from graph_ga.graph_ga import ga_logger, run_ga_maximization
 from mol_opt import get_base_molopt_parser, get_cached_objective_and_dataframe
 
 
@@ -27,7 +26,6 @@ def get_parser():
 
 
 if __name__ == "__main__":
-
     # Arguments
     parser = argparse.ArgumentParser(parents=[get_parser(), get_base_molopt_parser()])
     args = parser.parse_args()
@@ -66,9 +64,7 @@ if __name__ == "__main__":
     new_smiles = [s for s in all_smiles if s not in dataset_smiles]
     new_smiles_scores = [opt_func(s) for s in new_smiles]
     new_smiles_raw_info = [opt_func.cache[s] for s in new_smiles]
-    json_res = dict(
-        new_smiles=new_smiles, scores=new_smiles_scores, raw_scores=new_smiles_raw_info
-    )
+    json_res = dict(new_smiles=new_smiles, scores=new_smiles_scores, raw_scores=new_smiles_raw_info)
 
     # Save results
     with open(args.output_path, "w") as f:

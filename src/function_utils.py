@@ -37,7 +37,6 @@ class CachedFunction:
             return [self.transform(x) for x in output_list]
 
     def __call__(self, inputs, batch=False):
-
         # Ensure it is in batch form
         if not batch:
             inputs = [inputs]

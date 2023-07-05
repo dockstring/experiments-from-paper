@@ -3,22 +3,20 @@ import functools
 import json
 from pathlib import Path
 
+import dockstring_data
 import numpy as np
 import pandas as pd
 import torch
-
-import dockstring_data
-from regression.regression_utils import (
-    get_regression_parser,
-    split_dataframe_train_test,
-    eval_regression,
-)
 from gp import (
     TanimotoGP,
-    fit_gp_hyperparameters,
     batch_predict_mu_var_numpy,
+    fit_gp_hyperparameters,
 )
-
+from regression.regression_utils import (
+    eval_regression,
+    get_regression_parser,
+    split_dataframe_train_test,
+)
 
 DATA_SAVE_NAME = "data.npz"
 MODEL_SAVE_NAME = "model.pt"
@@ -39,21 +37,16 @@ def get_dataset(df: pd.DataFrame, target=None):
 
 
 def get_trained_model(train_dataset):
-
     X_train, y_train = train_dataset
 
-    model = TanimotoGP(
-        train_x=torch.as_tensor(X_train), train_y=torch.as_tensor(y_train.flatten())
-    )
+    model = TanimotoGP(train_x=torch.as_tensor(X_train), train_y=torch.as_tensor(y_train.flatten()))
     fit_gp_hyperparameters(model)
     return model
 
 
 def get_predictions(model, dataset, include_var=False):
     X, _ = dataset
-    mu, var = batch_predict_mu_var_numpy(
-        model, torch.as_tensor(X), include_var=include_var, batch_size=2 ** 16
-    )
+    mu, var = batch_predict_mu_var_numpy(model, torch.as_tensor(X), include_var=include_var, batch_size=2**16)
     if include_var:
         return mu, var
     else:
@@ -88,7 +81,6 @@ def load_model(save_dir):
 
 
 if __name__ == "__main__":
-
     # Arguments
     parser = argparse.ArgumentParser(parents=[get_parser(), get_regression_parser()])
     args = parser.parse_args()
@@ -106,9 +98,7 @@ if __name__ == "__main__":
             df_train = df_train.sample(args.n_train)
         df_test = None
     else:
-        df_train, df_test = split_dataframe_train_test(
-            args.dataset, args.data_split, n_train=args.n_train
-        )
+        df_train, df_test = split_dataframe_train_test(args.dataset, args.data_split, n_train=args.n_train)
         df_test = process_df(df_test)
     df_train = process_df(df_train)
 

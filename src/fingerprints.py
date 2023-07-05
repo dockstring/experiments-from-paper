@@ -7,9 +7,7 @@ from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 from rdkit.DataStructs.cDataStructs import ConvertToNumpyArray
 
-standard_fingerprint = functools.partial(
-    rdMolDescriptors.GetMorganFingerprintAsBitVect, radius=2, nBits=1024
-)
+standard_fingerprint = functools.partial(rdMolDescriptors.GetMorganFingerprintAsBitVect, radius=2, nBits=1024)
 
 
 def _fp_to_array(fp):

@@ -1,20 +1,19 @@
 import argparse
+import functools
 import json
 import logging
 import pickle
 import random
-import functools
 
 import numpy as np
 import pandas as pd
 import torch
+from bo import acquisition_funcs, gp_bo
+from fingerprints import smiles_to_fp_array
 from gp import (
     TanimotoGP,
     fit_gp_hyperparameters,
 )
-from fingerprints import smiles_to_fp_array
-from bo import acquisition_funcs, gp_bo
-
 from mol_opt import get_base_molopt_parser, get_cached_objective_and_dataframe
 
 
@@ -32,18 +31,14 @@ def get_parser():
         default=3000,
         help="Number of random training points to use for GP.",
     )
-    parser.add_argument(
-        "--ucb_beta", type=float, required=True, help="Beta value for UCB."
-    )
+    parser.add_argument("--ucb_beta", type=float, required=True, help="Beta value for UCB.")
     parser.add_argument(
         "--max_bo_iter",
         type=int,
         default=10000,
         help="Maximum number of iterations of BO.",
     )
-    parser.add_argument(
-        "--bo_batch_size", type=int, default=1, help="Batch size for BO."
-    )
+    parser.add_argument("--bo_batch_size", type=int, default=1, help="Batch size for BO.")
     parser.add_argument(
         "--ga_max_generations",
         type=int,
@@ -66,17 +61,13 @@ def get_trained_gp(
     X_train,
     y_train,
 ):
-
     # Fit model using type 2 maximum likelihood
-    model = TanimotoGP(
-        train_x=torch.as_tensor(X_train), train_y=torch.as_tensor(y_train)
-    )
+    model = TanimotoGP(train_x=torch.as_tensor(X_train), train_y=torch.as_tensor(y_train))
     fit_gp_hyperparameters(model)
     return model
 
 
 if __name__ == "__main__":
-
     # Arguments
     parser = argparse.ArgumentParser(parents=[get_parser(), get_base_molopt_parser()])
     args = parser.parse_args()
@@ -111,9 +102,7 @@ if __name__ == "__main__":
 
     # Decide on acquisition function
     def acq_f_of_time(bo_iter, status_dict):
-        return functools.partial(
-            acquisition_funcs.upper_confidence_bound, beta=args.ucb_beta
-        )
+        return functools.partial(acquisition_funcs.upper_confidence_bound, beta=args.ucb_beta)
 
     # Run GP-BO
     gp_bo.logger.setLevel(logging.DEBUG)

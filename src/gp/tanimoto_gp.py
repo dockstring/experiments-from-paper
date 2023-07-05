@@ -1,18 +1,18 @@
 """ Code for GPs with Tanimot kernel """
 
-import torch
-import gpytorch
-from gpytorch.kernels import ScaleKernel, Kernel, InducingPointKernel
-from gpytorch.models import ExactGP
 import botorch
+import gpytorch
+import torch
+from gpytorch.kernels import InducingPointKernel, Kernel, ScaleKernel
+from gpytorch.models import ExactGP
 
 
 def batch_tanimoto_sim(x1: torch.Tensor, x2: torch.Tensor):
     """tanimoto between two batched tensors, across last 2 dimensions"""
     assert x1.ndim >= 2 and x2.ndim >= 2
     dot_prod = torch.matmul(x1, torch.transpose(x2, -1, -2))
-    x1_sum = torch.sum(x1 ** 2, dim=-1, keepdims=True)
-    x2_sum = torch.sum(x2 ** 2, dim=-1, keepdims=True)
+    x1_sum = torch.sum(x1**2, dim=-1, keepdims=True)
+    x2_sum = torch.sum(x2**2, dim=-1, keepdims=True)
     return (dot_prod) / (x1_sum + torch.transpose(x2_sum, -1, -2) - dot_prod)
 
 
@@ -28,9 +28,7 @@ class TanimotoKernel(Kernel):
     def forward(self, x1, x2, diag=False, **params):
         if diag:
             assert x1.size() == x2.size() and torch.equal(x1, x2)
-            return torch.ones(
-                *x1.shape[:-2], x1.shape[-2], dtype=x1.dtype, device=x1.device
-            )
+            return torch.ones(*x1.shape[:-2], x1.shape[-2], dtype=x1.dtype, device=x1.device)
         return batch_tanimoto_sim(x1, x2)
 
 
@@ -43,7 +41,6 @@ class TanimotoGP(ExactGP, botorch.models.gpytorch.GPyTorchModel):
         train_y,
         likelihood=None,
     ):
-
         # Fill in likelihood
         if likelihood is None:
             likelihood = gpytorch.likelihoods.GaussianLikelihood()
@@ -55,7 +52,6 @@ class TanimotoGP(ExactGP, botorch.models.gpytorch.GPyTorchModel):
         self.mean_module = gpytorch.means.ConstantMean()
 
     def forward(self, x):
-
         # Normal mean + covar
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)

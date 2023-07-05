@@ -11,7 +11,7 @@ for target in "${target_arr[@]}" ; do
 
     # Run multiple trials
     for trial in {0..2}; do
-        output_path="${res_dir}/trial-${trial}.json" 
+        output_path="${res_dir}/trial-${trial}.json"
 
         if [[ -f "$output_path" ]]; then
             echo "Results for ${target} trial ${trial} exists. Skipping"

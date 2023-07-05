@@ -1,22 +1,20 @@
+import logging
 import random
 from typing import List, Union
-import logging
 
-import numpy as np
-from rdkit import Chem, RDLogger
 import joblib
-
+import numpy as np
 from function_utils import CachedFunction
-from . import crossover as co, mutate as mu
+from rdkit import Chem, RDLogger
 
+from . import crossover as co
+from . import mutate as mu
 
 # Logger with standard handler
 ga_logger = logging.getLogger("graph_ga")
 if len(ga_logger.handlers) == 0:
     ch = logging.StreamHandler()
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     ch.setFormatter(formatter)
     ga_logger.addHandler(ch)
 
@@ -40,9 +38,7 @@ def make_mating_pool(population_mol: List, population_scores, offspring_size: in
     # scores -> probs
     sum_scores = sum(population_scores)
     population_probs = [p / sum_scores for p in population_scores]
-    mating_pool = np.random.choice(
-        population_mol, p=population_probs, size=offspring_size, replace=True
-    )
+    mating_pool = np.random.choice(population_mol, p=population_probs, size=offspring_size, replace=True)
     return mating_pool
 
 
@@ -147,9 +143,7 @@ def run_ga_maximization(
     del num_start_eval  # not needed later
     population_scores = scoring_function(population_smiles, batch=True)
     queried_smiles = list(population_smiles)
-    ga_logger.debug(
-        f"Initial population scoring done. Pop size={len(population_smiles)}, Max={max(population_scores)}"
-    )
+    ga_logger.debug(f"Initial population scoring done. Pop size={len(population_smiles)}, Max={max(population_scores)}")
 
     # Run GA
     early_stop = False
@@ -173,10 +167,7 @@ def run_ga_maximization(
 
             # Create offspring in parallel to be more efficient
             offspring_mol = parallel(
-                joblib.delayed(reproduce)(
-                    mating_pool, mutation_rate, **crossover_kwargs
-                )
-                for _ in range(offspring_size)
+                joblib.delayed(reproduce)(mating_pool, mutation_rate, **crossover_kwargs) for _ in range(offspring_size)
             )
             # offspring_mol = [
             #     reproduce(mating_pool, mutation_rate, **crossover_kwargs)
@@ -192,21 +183,15 @@ def run_ga_maximization(
                         offspring_smiles.append(Chem.MolToSmiles(mol))
                 except ValueError:
                     pass
-            ga_logger.debug(
-                f"\t{len(offspring_smiles)}/{len(offspring_mol)} converted to SMILES"
-            )
+            ga_logger.debug(f"\t{len(offspring_smiles)}/{len(offspring_mol)} converted to SMILES")
             population_and_offspring_smiles = population_smiles + offspring_smiles
             population_and_offspring_smiles = list(set(population_and_offspring_smiles))
-            ga_logger.debug(
-                f"\tPopulation sanitized, now contains {len(population_and_offspring_smiles)} members."
-            )
+            ga_logger.debug(f"\tPopulation sanitized, now contains {len(population_and_offspring_smiles)} members.")
 
             # Find out scores, but don't go over budget
             old_scores = population_scores
             population_smiles = []
-            planned_cached_smiles = set(
-                scoring_function.cache.keys()
-            )  # make a copy to not go over budget
+            planned_cached_smiles = set(scoring_function.cache.keys())  # make a copy to not go over budget
             planned_cache_start_size = len(planned_cached_smiles)
             for smiles in population_and_offspring_smiles:
                 if (
@@ -241,38 +226,24 @@ def run_ga_maximization(
                 size=len(population_scores),
                 num_func_eval=len(scoring_function.cache) - start_cache_size,
             )
-            stats_str = " ".join(
-                ["\tGen stats:\n"] + [f"{k}={v}" for k, v in gen_stats_dict.items()]
-            )
+            stats_str = " ".join(["\tGen stats:\n"] + [f"{k}={v}" for k, v in gen_stats_dict.items()])
             ga_logger.info(stats_str)
             gen_info.append(dict(smiles=population_smiles, **gen_stats_dict))
 
             # early stopping if population doesn't change
-            if len(population_scores) == len(old_scores) and np.allclose(
-                population_scores, old_scores
-            ):
-
+            if len(population_scores) == len(old_scores) and np.allclose(population_scores, old_scores):
                 num_no_change_gen += 1
-                ga_logger.info(
-                    f"\tPopulation unchanged for {num_no_change_gen} generations"
-                )
+                ga_logger.info(f"\tPopulation unchanged for {num_no_change_gen} generations")
                 if patience is not None and num_no_change_gen > patience:
-                    ga_logger.info(
-                        f"\tThis exceeds patience of {patience}. Terminating GA."
-                    )
+                    ga_logger.info(f"\tThis exceeds patience of {patience}. Terminating GA.")
                     early_stop = True
                     break
             else:
                 num_no_change_gen = 0
 
             # early stopping if budget is reached
-            if (
-                max_func_calls is not None
-                and len(scoring_function.cache) >= max_func_calls
-            ):
-                ga_logger.info(
-                    f"\tBudget of {max_func_calls - start_cache_size} has been reached. Terminating..."
-                )
+            if max_func_calls is not None and len(scoring_function.cache) >= max_func_calls:
+                ga_logger.info(f"\tBudget of {max_func_calls - start_cache_size} has been reached. Terminating...")
                 reached_budget = True
                 break
 

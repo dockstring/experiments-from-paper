@@ -1,13 +1,10 @@
+import dockstring_data
 import numpy as np
 import pandas as pd
-
-import dockstring_data
-from regression.ridge import get_dataset, load_model, get_predictions
+from regression.ridge import get_dataset, get_predictions, load_model
 from virtual_screening import get_base_parser
 
-
 if __name__ == "__main__":
-
     parser = get_base_parser()
     args = parser.parse_args()
 

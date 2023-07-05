@@ -1,26 +1,22 @@
 """ Contains for for Gaussian process Bayesian optimization """
 
-import logging
-import random
-import pprint
 import heapq
+import logging
+import pprint
+import random
 from typing import Union
 
 import numpy as np
 import torch
-
-from function_utils import CachedFunction, CachedBatchFunction
+from function_utils import CachedBatchFunction, CachedFunction
 from gp import TanimotoGP, batch_predict_mu_var_numpy
 from graph_ga.graph_ga import run_ga_maximization
-
 
 # Logger with standard handler
 logger = logging.getLogger("gp_bo")
 if len(logger.handlers) == 0:
     ch = logging.StreamHandler()
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
@@ -33,14 +29,11 @@ def maximize_acquisition_func_ga(
     smiles_to_np_fingerprint: callable,
     **ga_kwargs,
 ):
-
     # Construct acquisition function for GA
     def _acq_func_smiles(smiles_list):
         fp_array = np.stack(list(map(smiles_to_np_fingerprint, smiles_list)))
         fp_array = fp_array.astype(np.float32)
-        mu_pred, var_pred = batch_predict_mu_var_numpy(
-            gp_model, torch.as_tensor(fp_array)
-        )
+        mu_pred, var_pred = batch_predict_mu_var_numpy(gp_model, torch.as_tensor(fp_array))
         acq_vals = acq_func_np(mu_pred, var_pred)
         return list(map(float, acq_vals))
 
@@ -97,11 +90,7 @@ def gp_bo_loop(
         f"Top {n_top_log} known starting scores:\n"
         + ", ".join(
             f"#{i+1}={v:.3f}"
-            for i, v in enumerate(
-                heapq.nlargest(
-                    n_top_log, scoring_function(list(start_cache.keys()), batch=True)
-                )
-            )
+            for i, v in enumerate(heapq.nlargest(n_top_log, scoring_function(list(start_cache.keys()), batch=True)))
         )
     )
 
@@ -132,16 +121,14 @@ def gp_bo_loop(
     # Handle edge case of no training data
     if len(gp_train_smiles_set) == 0:
         logger.warning(
-            f"No SMILES were provided to train GP. A random one will be chosen from the pool to start training."
+            "No SMILES were provided to train GP. A random one will be chosen from the pool to start training."
         )
         random_smiles = random.choice(list(smiles_pool))
         logger.debug(f"The following SMILES was chosen:\n\t{random_smiles}")
         gp_train_smiles_set.add(random_smiles)
         del random_smiles
     if len(gp_train_smiles_set) > 0:
-        logger.debug(
-            f"Plan to condition GP on {len(gp_train_smiles_set)} training points."
-        )
+        logger.debug(f"Plan to condition GP on {len(gp_train_smiles_set)} training points.")
 
     # Evaluate scores of training data (ideally should all be known)
     num_train_data_not_known = len(gp_train_smiles_set - set(start_cache.keys()))
@@ -156,9 +143,7 @@ def gp_bo_loop(
     logger.debug("Scoring of training points done.")
 
     # Store GP training data
-    x_train_np = np.stack(
-        list(map(smiles_to_np_fingerprint, gp_train_smiles_list))
-    ).astype(np.float32)
+    x_train_np = np.stack(list(map(smiles_to_np_fingerprint, gp_train_smiles_list))).astype(np.float32)
     y_train_np = np.array(gp_train_smiles_scores).astype(np.float32)
     gp_model.set_train_data(
         inputs=torch.as_tensor(x_train_np),
@@ -191,18 +176,13 @@ def gp_bo_loop(
             s
             for _, s in heapq.nlargest(
                 ga_pool_num_best,
-                [
-                    (scoring_function(smiles), smiles)
-                    for smiles in scoring_function.cache.keys()
-                ],
+                [(scoring_function(smiles), smiles) for smiles in scoring_function.cache.keys()],
             )
         ]
         ga_start_smiles = set(top_smiles_at_bo_iter_start)  # start with best
         ga_start_smiles.update(carryover_smiles_pool)  # add carryover
         if len(ga_start_smiles) < max_ga_start_population_size:
-            samples_from_pool = random.sample(
-                smiles_pool, min(len(smiles_pool), max_ga_start_population_size)
-            )
+            samples_from_pool = random.sample(smiles_pool, min(len(smiles_pool), max_ga_start_population_size))
 
             # Pad with random SMILES until full
             for s in samples_from_pool:
@@ -215,9 +195,7 @@ def gp_bo_loop(
         curr_acq_func = acq_func_of_time(bo_iter, bo_state_dict)
 
         # Optimize acquisition function
-        logger.debug(
-            f"Maximizing acqusition function with {len(ga_start_smiles)} starting SMILES."
-        )
+        logger.debug(f"Maximizing acqusition function with {len(ga_start_smiles)} starting SMILES.")
         acq_smiles, acq_vals = maximize_acquisition_func_ga(
             gp_model=gp_model,
             acq_func_np=curr_acq_func,
@@ -231,20 +209,14 @@ def gp_bo_loop(
         )
         logger.debug(f"Acquisition function optimized, {len(acq_smiles)} evaluated.")
         _n_top = max(n_top_log, bo_batch_size + 3)
-        logger.debug(
-            f"Top {_n_top} acquisition function values: "
-            + ", ".join([f"{v:.2f}" for v in acq_vals[:_n_top]])
-        )
+        logger.debug(f"Top {_n_top} acquisition function values: " + ", ".join([f"{v:.2f}" for v in acq_vals[:_n_top]]))
         del _n_top
 
         # Now that new SMILES were generated, add them to the pool
         _start_size = len(smiles_pool)
         smiles_pool.update(acq_smiles)
         _end_size = len(smiles_pool)
-        logger.debug(
-            f"{_end_size - _start_size} smiles added to pool "
-            f"(size went from {_start_size} to {_end_size}"
-        )
+        logger.debug(f"{_end_size - _start_size} smiles added to pool " f"(size went from {_start_size} to {_end_size}")
         del _start_size, _end_size
 
         # Greedily choose SMILES to be in the BO batch
@@ -258,12 +230,8 @@ def gp_bo_loop(
                 break
         del candidate_smiles, acq
         logger.debug(f"Batch created, size {len(smiles_batch)}/{bo_batch_size}")
-        assert (
-            len(smiles_batch) > 0
-        ), "Empty batch, shouldn't happen. Must be problem with GA."
-        smiles_batch_np = np.stack(
-            list(map(smiles_to_np_fingerprint, smiles_batch))
-        ).astype(x_train_np.dtype)
+        assert len(smiles_batch) > 0, "Empty batch, shouldn't happen. Must be problem with GA."
+        smiles_batch_np = np.stack(list(map(smiles_to_np_fingerprint, smiles_batch))).astype(x_train_np.dtype)
 
         # Get predictions about SMILES batch before training on it
         smiles_batch_mu_pre, smiles_batch_var_pre = batch_predict_mu_var_numpy(
@@ -272,11 +240,9 @@ def gp_bo_loop(
         logger.debug("Made mean/var predictions for new SMILES batch")
 
         # Score these SMILES
-        logger.debug(
-            f"Evaluating scoring function on SMILES batch of size {len(smiles_batch)}."
-        )
+        logger.debug(f"Evaluating scoring function on SMILES batch of size {len(smiles_batch)}.")
         smiles_batch_scores = scoring_function(smiles_batch, batch=True)
-        logger.debug(f"Scoring complete.")
+        logger.debug("Scoring complete.")
 
         # Add new points to GP training data
         gp_train_smiles_list += smiles_batch
@@ -297,10 +263,7 @@ def gp_bo_loop(
         # Since maybe they will have high acquisition function values next time
         carryover_smiles_pool = set()
         for s in acq_smiles:
-            if (
-                len(carryover_smiles_pool) < ga_pool_num_carryover
-                and s not in gp_train_smiles_set
-            ):
+            if len(carryover_smiles_pool) < ga_pool_num_carryover and s not in gp_train_smiles_set:
                 carryover_smiles_pool.add(s)
             else:
                 break
@@ -324,9 +287,7 @@ def gp_bo_loop(
                 std=float(np.sqrt(smiles_batch_var_pre[i])),
                 acq=smiles_batch_acq[i],
             )
-            pred_dict["pred_error_in_stds"] = (
-                pred_dict["mu"] - transformed_score
-            ) / pred_dict["std"]
+            pred_dict["pred_error_in_stds"] = (pred_dict["mu"] - transformed_score) / pred_dict["std"]
             pred_dict_post1 = dict(
                 mu=float(smiles_batch_mu_post1[i]),
                 std=float(np.sqrt(smiles_batch_var_post1[i])),
@@ -357,31 +318,21 @@ def gp_bo_loop(
         # bo_iter_status_update += "\n\tBatch scores (raw): "
         # bo_iter_status_update += ", ".join([str(r["raw_score"]) for r in batch_results])
         bo_iter_status_update += "\n\tBatch scores (transformed): "
-        bo_iter_status_update += ", ".join(
-            [str(r["transformed_score"]) for r in batch_results]
-        )
+        bo_iter_status_update += ", ".join([str(r["transformed_score"]) for r in batch_results])
         bo_iter_status_update += "\n\tBatch acquisition function values: "
         bo_iter_status_update += ", ".join(f"{a:.2f}" for a in smiles_batch_acq)
-        bo_iter_status_update += (
-            "\n\tAcquisition function values of top known smiles : "
-        )
+        bo_iter_status_update += "\n\tAcquisition function values of top known smiles : "
         _acq_val_dict = dict(zip(acq_smiles, acq_vals))
-        bo_iter_status_update += ", ".join(
-            f"{_acq_val_dict[s]:.2f}" for s in top_smiles_at_bo_iter_start[:n_top_log]
-        )
+        bo_iter_status_update += ", ".join(f"{_acq_val_dict[s]:.2f}" for s in top_smiles_at_bo_iter_start[:n_top_log])
         del _acq_val_dict
 
         # Overall progress towards optimizing function
-        new_bo_smiles = [
-            r["smiles"] for r in bo_query_res if r["smiles"] not in start_cache
-        ]
+        new_bo_smiles = [r["smiles"] for r in bo_query_res if r["smiles"] not in start_cache]
         new_bo_smiles = list(set(new_bo_smiles))
         bo_iter_status_update += "\n\tTop new scores so far: "
         bo_iter_status_update += ", ".join(
             f"#{i+1}={v:.3f}"
-            for i, v in enumerate(
-                heapq.nlargest(n_top_log, [scoring_function(s) for s in new_bo_smiles])
-            )
+            for i, v in enumerate(heapq.nlargest(n_top_log, [scoring_function(s) for s in new_bo_smiles]))
         )
         func_evals_so_far = len(scoring_function.cache) - start_cache_size
         bo_iter_status_update += f"\n\tFunction calls so far: {func_evals_so_far}"

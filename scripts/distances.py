@@ -3,43 +3,42 @@ from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
+from clustering import read_smiles
 from rdkit import DataStructs
 from rdkit.Chem import AllChem, RDKFingerprint
 from rdkit.DataStructs import ExplicitBitVect
 
-from clustering import read_smiles
-
 # Styling
 fig_width = 2.1
 fig_height = 2.1
-plt.rcParams.update({'font.size': 6})
+plt.rcParams.update({"font.size": 6})
 
 colors = [
-    '#1f77b4',  # muted blue
-    '#d62728',  # brick red
-    '#ff7f0e',  # safety orange
-    '#2ca02c',  # cooked asparagus green
-    '#9467bd',  # muted purple
-    '#8c564b',  # chestnut brown
-    '#e377c2',  # raspberry yogurt pink
-    '#7f7f7f',  # middle gray
-    '#bcbd22',  # curry yellow-green
-    '#17becf',  # blue-teal
+    "#1f77b4",  # muted blue
+    "#d62728",  # brick red
+    "#ff7f0e",  # safety orange
+    "#2ca02c",  # cooked asparagus green
+    "#9467bd",  # muted purple
+    "#8c564b",  # chestnut brown
+    "#e377c2",  # raspberry yogurt pink
+    "#7f7f7f",  # middle gray
+    "#bcbd22",  # curry yellow-green
+    "#17becf",  # blue-teal
 ]
 
 
 def parse_args(args=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', help='path to CSV file', required=True)
-    parser.add_argument('--max_size', type=int, help='maximum number of entries in dataset', required=False)
-    parser.add_argument('--seed', type=int, default=0, help='Random seed (only used for data subsets)')
+    parser.add_argument("--dataset", help="path to CSV file", required=True)
+    parser.add_argument("--max_size", type=int, help="maximum number of entries in dataset", required=False)
+    parser.add_argument("--seed", type=int, default=0, help="Random seed (only used for data subsets)")
     return parser.parse_args(args=args)
 
 
 def mol_from_smiles(smiles: str) -> AllChem.Mol:
     mol = AllChem.MolFromSmiles(smiles)
     if not mol:
-        raise RuntimeError(f'Cannot read SMILES: {smiles}')
+        raise RuntimeError(f"Cannot read SMILES: {smiles}")
 
     return mol
 
@@ -81,19 +80,19 @@ def main():
             [distances[k] for distances in sorted_distances],
             bins=10,
             color=colors[i],
-            label=f'k={k}',
-            histtype='stepfilled',
+            label=f"k={k}",
+            histtype="stepfilled",
             alpha=0.75,
             density=True,
-            edgecolor='black',
+            edgecolor="black",
         )
 
-    ax.set_xlabel('Tanimoto Distance')
-    ax.set_ylabel('Density')
+    ax.set_xlabel("Tanimoto Distance")
+    ax.set_ylabel("Density")
     ax.legend()
 
-    fig.savefig('distances.pdf')
+    fig.savefig("distances.pdf")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

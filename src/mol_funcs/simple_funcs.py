@@ -1,5 +1,6 @@
 from rdkit import Chem
-from rdkit.Chem import Crippen, QED as qed_module, Descriptors
+from rdkit.Chem import QED as qed_module
+from rdkit.Chem import Crippen, Descriptors
 
 # Guacamol
 guacamol_funcs = dict()

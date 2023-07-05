@@ -1,21 +1,20 @@
 """ Script to output results for molecular optimization. """
 
 import argparse
-import math
-from pathlib import Path
-import json
-from collections import defaultdict
 import functools
 import heapq
+import json
+import math
+from collections import defaultdict
+from pathlib import Path
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
-from tqdm.auto import tqdm
-
 from rdkit import Chem
-from rdkit.Chem import Draw, Descriptors, Crippen, AllChem, QED
+from rdkit.Chem import QED, AllChem, Crippen, Descriptors, Draw
 from rdkit.Chem.Scaffolds import MurckoScaffold
+from tqdm.auto import tqdm
 
 METHOD_NAME_REMAP = {
     "graph_ga": "Graph GA",
@@ -84,11 +83,7 @@ def _get_min_median_max(method_res_list, plot_metric=top1_so_far, is_min=True):
 
 def batch_tanimoto_numpy(fp_arr1, fp_arr2):
     fp_int = fp_arr1 @ fp_arr2.T
-    fp_union = (
-        np.sum(fp_arr1, axis=1, keepdims=True)
-        + np.sum(fp_arr2, axis=1, keepdims=True).T
-        - fp_int
-    )
+    fp_union = np.sum(fp_arr1, axis=1, keepdims=True) + np.sum(fp_arr2, axis=1, keepdims=True).T - fp_int
     return fp_int / fp_union
 
 
@@ -98,7 +93,6 @@ def _get_numpy_fp(smiles):
 
 
 if __name__ == "__main__":
-
     # Collect arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -119,9 +113,7 @@ if __name__ == "__main__":
         default="./data/dockstring-dataset-extra-props.tsv",
         help="Path to (augmented) dataset.",
     )
-    parser.add_argument(
-        "--n_top_mols", type=int, default=12, help="Number of top molecules to plot."
-    )
+    parser.add_argument("--n_top_mols", type=int, default=12, help="Number of top molecules to plot.")
     parser.add_argument(
         "--plot_top_n",
         type=int,
@@ -131,9 +123,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--scaffolds", action="store_true")
     parser.add_argument("--fingerprints", action="store_true")
-    parser.add_argument(
-        "--sub_img_size", type=int, default=400, help="RDKit sub image size"
-    )
+    parser.add_argument("--sub_img_size", type=int, default=400, help="RDKit sub image size")
     parser.add_argument("--latex", action="store_true", help="Flag to output latex.")
 
     args = parser.parse_args()
@@ -153,19 +143,14 @@ if __name__ == "__main__":
     if args.scaffolds:
         df["gen-scaffold"] = [
             Chem.MolToSmiles(
-                MurckoScaffold.MakeScaffoldGeneric(
-                    MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(s))
-                )
+                MurckoScaffold.MakeScaffoldGeneric(MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(s)))
             )
             for s in tqdm(list(df["smiles"]), desc="Calculating train set scaffolds")
         ]
         train_set_scaffolds = set(df["gen-scaffold"])
     if args.fingerprints:
         train_set_fingerprints = np.stack(
-            [
-                _get_numpy_fp(s)
-                for s in tqdm(df["smiles"].values, desc="Calculating fingerprints.")
-            ]
+            [_get_numpy_fp(s) for s in tqdm(df["smiles"].values, desc="Calculating fingerprints.")]
         )
 
     # Read in BO results
@@ -174,7 +159,6 @@ if __name__ == "__main__":
     assert results_path.exists()
     for method_res_dir in sorted(results_path.iterdir()):
         for protein_res_dir in sorted(method_res_dir.iterdir()):
-
             res_jsons = []
             for res_file in protein_res_dir.glob("*.json"):
                 with open(res_file) as f:
@@ -205,9 +189,7 @@ if __name__ == "__main__":
                 )
                 plt.plot(md, label=METHOD_NAME_REMAP[method_name])
                 plt.fill_between(range(len(md)), mn, mx, alpha=0.3)
-            plt.title(
-                f"Top {n} molecule vs num eval for {PLOT_OBJECTIVES[obj]} objective."
-            )
+            plt.title(f"Top {n} molecule vs num eval for {PLOT_OBJECTIVES[obj]} objective.")
             plt.legend()
             plt.xlabel("Number of function evaluations.")
             plt.ylabel(f"{PLOT_OBJECTIVES[obj]} objective")
@@ -221,18 +203,14 @@ if __name__ == "__main__":
         all_smiles_scores = []
         for method_name, method_res_list in protein_res_dict[obj].items():
             for res in method_res_list:
-                all_smiles_scores += list(
-                    zip(res["scores"], res["new_smiles"], res["raw_scores"])
-                )
+                all_smiles_scores += list(zip(res["scores"], res["new_smiles"], res["raw_scores"]))
         best_smiles_scores = heapq.nlargest(12, all_smiles_scores)
         best_mols = [Chem.MolFromSmiles(t[1]) for t in best_smiles_scores]
 
         # Table with best molecules
         obj_mult = 1 if obj in MAXIMIZATION_OBJECTIVES else -1
         if obj == "QED":
-            obj_mult /= (
-                10  # undo a random hack that I did to make BO more numerically stable
-            )
+            obj_mult /= 10  # undo a random hack that I did to make BO more numerically stable
         best_obj_df = pd.DataFrame(
             data=np.array([obj_mult * t[0] for t in best_smiles_scores]),
             columns=["objective"],
@@ -274,9 +252,7 @@ if __name__ == "__main__":
         if args.scaffolds:
             best_scaffolds = [
                 Chem.MolToSmiles(
-                    MurckoScaffold.MakeScaffoldGeneric(
-                        MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(s))
-                    )
+                    MurckoScaffold.MakeScaffoldGeneric(MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(s)))
                 )
                 for _, s, _ in best_smiles_scores
             ]
@@ -297,17 +273,13 @@ if __name__ == "__main__":
             mol_legends = []
             for i, mol in enumerate(best_mols):
                 mol_list.append(mol)
-                mol_legends.append(
-                    f"Rank #{i+1} (obj={best_obj_df.objective.values[i]:.3f})"
-                )
+                mol_legends.append(f"Rank #{i+1} (obj={best_obj_df.objective.values[i]:.3f})")
                 fp = _get_numpy_fp(Chem.MolToSmiles(mol)).reshape(1, -1)
                 fp_sims = batch_tanimoto_numpy(train_set_fingerprints, fp).flatten()
                 argsort = np.argsort(-fp_sims)
                 for sim_rank, j in enumerate(argsort[:N_SIM]):
                     mol_list.append(Chem.MolFromSmiles(df["smiles"].values[j]))
-                    mol_legends.append(
-                        f"Train mol #{sim_rank+1} (sim={fp_sims[j]:.3f}, obj={df[obj].values[j]:.3f})"
-                    )
+                    mol_legends.append(f"Train mol #{sim_rank+1} (sim={fp_sims[j]:.3f}, obj={df[obj].values[j]:.3f})")
             img = Draw.MolsToGridImage(
                 mol_list,
                 legends=mol_legends,

@@ -1,26 +1,18 @@
 """ Run docking on a tsv file """
 
 import argparse
-from tqdm.auto import tqdm
-import numpy as np
-import pandas as pd
 
 import dockstring
-
+import numpy as np
+import pandas as pd
+from tqdm.auto import tqdm
 
 if __name__ == "__main__":
-
     # Command line args
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--input_file", type=str, required=True, help="Input file to dock."
-    )
-    parser.add_argument(
-        "--output_path", type=str, required=True, help="Path of file to output"
-    )
-    parser.add_argument(
-        "--target", type=str, required=True, help="Name of target for docking."
-    )
+    parser.add_argument("--input_file", type=str, required=True, help="Input file to dock.")
+    parser.add_argument("--output_path", type=str, required=True, help="Path of file to output")
+    parser.add_argument("--target", type=str, required=True, help="Name of target for docking.")
     args = parser.parse_args()
 
     # Start by opening the output file for continuous writing

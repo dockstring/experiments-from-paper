@@ -3,24 +3,22 @@ import functools
 import json
 from pathlib import Path
 
+import dockstring_data
 import numpy as np
 import pandas as pd
 import torch
-
-import dockstring_data
-from regression.regression_utils import (
-    get_regression_parser,
-    split_dataframe_train_test,
-    eval_regression,
-)
 from gp import (
     TanimotoGP,
     TanimotoSGP,
-    fit_gp_hyperparameters,
     batch_predict_mu_var_numpy,
+    fit_gp_hyperparameters,
     transfer_gp_hyperparameters,
 )
-
+from regression.regression_utils import (
+    eval_regression,
+    get_regression_parser,
+    split_dataframe_train_test,
+)
 
 DATA_SAVE_NAME = "data.npz"
 MODEL_SAVE_NAME = "model.pt"
@@ -47,7 +45,6 @@ def get_dataset(df: pd.DataFrame, target=None):
 
 
 def get_trained_model(train_dataset, n_inducing):
-
     X_train, y_train = train_dataset
 
     # Choose inducing points
@@ -57,9 +54,7 @@ def get_trained_model(train_dataset, n_inducing):
     y_ind = y_train[inducing_indices].copy()
 
     # Train an exact model on just the inducing points
-    model = TanimotoGP(
-        train_x=torch.as_tensor(X_ind), train_y=torch.as_tensor(y_ind.flatten())
-    )
+    model = TanimotoGP(train_x=torch.as_tensor(X_ind), train_y=torch.as_tensor(y_ind.flatten()))
     fit_gp_hyperparameters(model)
 
     # Create the sparse model, and give it the same hyperparameters as the exact model
@@ -75,9 +70,7 @@ def get_trained_model(train_dataset, n_inducing):
 
 def get_predictions(model, dataset):
     X, _ = dataset
-    mu, _ = batch_predict_mu_var_numpy(
-        model, torch.as_tensor(X), include_var=False, batch_size=2 ** 16
-    )
+    mu, _ = batch_predict_mu_var_numpy(model, torch.as_tensor(X), include_var=False, batch_size=2**16)
     return mu
 
 
@@ -102,9 +95,7 @@ def load_model(save_dir):
         x = npz["x"]
         y = npz["y"]
         z = npz["z"]
-    model = TanimotoSGP(
-        torch.as_tensor(x), torch.as_tensor(y), inducing_points=torch.as_tensor(z)
-    )
+    model = TanimotoSGP(torch.as_tensor(x), torch.as_tensor(y), inducing_points=torch.as_tensor(z))
     state_dict = torch.load(
         Path(save_dir) / MODEL_SAVE_NAME,
     )
@@ -113,7 +104,6 @@ def load_model(save_dir):
 
 
 if __name__ == "__main__":
-
     # Arguments
     parser = argparse.ArgumentParser(parents=[get_parser(), get_regression_parser()])
     args = parser.parse_args()
@@ -129,9 +119,7 @@ if __name__ == "__main__":
         df_train = pd.read_csv(args.dataset, sep="\t", header=0)
         df_test = None
     else:
-        df_train, df_test = split_dataframe_train_test(
-            args.dataset, args.data_split, n_train=args.n_train
-        )
+        df_train, df_test = split_dataframe_train_test(args.dataset, args.data_split, n_train=args.n_train)
         df_test = process_df(df_test)
     df_train = process_df(df_train)
 

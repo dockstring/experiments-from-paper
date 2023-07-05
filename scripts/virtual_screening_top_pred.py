@@ -1,25 +1,18 @@
 """ Get top predictions from virtual screening """
 
 import argparse
-import pandas as pd
-from pathlib import Path
 import heapq
+from pathlib import Path
+
+import pandas as pd
 from tqdm.auto import tqdm
 
-
 if __name__ == "__main__":
-
     # Command line args
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--input_files", type=str, nargs="+", required=True, help="Input files to sort."
-    )
-    parser.add_argument(
-        "--n_top", type=int, required=True, help="Number of top SMILES to keep."
-    )
-    parser.add_argument(
-        "--output_path", type=str, required=True, help="Path of file to output"
-    )
+    parser.add_argument("--input_files", type=str, nargs="+", required=True, help="Input files to sort.")
+    parser.add_argument("--n_top", type=int, required=True, help="Number of top SMILES to keep.")
+    parser.add_argument("--output_path", type=str, required=True, help="Path of file to output")
     args = parser.parse_args()
 
     # Read in files and maintain the smallest at all times

@@ -5,8 +5,8 @@ import math
 
 import numpy as np
 import pandas as pd
-from scipy import stats
 import sklearn.metrics as metrics
+from scipy import stats
 
 
 def get_regression_parser():
@@ -14,21 +14,15 @@ def get_regression_parser():
     parser = argparse.ArgumentParser(add_help=False)
 
     # Important/mandatory arguments
-    parser.add_argument(
-        "--target", type=str, required=True, help="Protein target to fit to."
-    )
-    parser.add_argument(
-        "--dataset", type=str, required=True, help="Path to dataset tsv file."
-    )
+    parser.add_argument("--target", type=str, required=True, help="Protein target to fit to.")
+    parser.add_argument("--dataset", type=str, required=True, help="Path to dataset tsv file.")
     parser.add_argument(
         "--data_split",
         type=str,
         default=None,
         help="Path to tsv file defining train/test split. Default is no split.",
     )
-    parser.add_argument(
-        "--output_path", type=str, required=True, help="Path to output file (json)."
-    )
+    parser.add_argument("--output_path", type=str, required=True, help="Path to output file (json).")
 
     # Optional arguments
     parser.add_argument(
@@ -48,9 +42,7 @@ def get_regression_parser():
         action="store_true",
         help="Flag to save the full set of predictions in the output.",
     )
-    parser.add_argument(
-        "--model_save_dir", type=str, default=None, help="Directory to save model in."
-    )
+    parser.add_argument("--model_save_dir", type=str, default=None, help="Directory to save model in.")
 
     return parser
 
@@ -60,15 +52,12 @@ def split_dataframe_train_test(
     data_split_path,
     n_train: int = None,
 ):
-
     # Load dataset
     data = pd.read_csv(dataset_path, sep="\t", header=0).set_index("inchikey")
 
     # Split
     splits = (
-        pd.read_csv(data_split_path, sep="\t", header=0)[
-            ["inchikey", "smiles", "split"]
-        ]
+        pd.read_csv(data_split_path, sep="\t", header=0)[["inchikey", "smiles", "split"]]
         .set_index("inchikey")
         .loc[data.index]
     )
@@ -90,7 +79,6 @@ def eval_regression(
     y_pred_std: np.array = None,
     n_subsample: int = None,
 ):
-
     # Potentially subsample train set
     assert len(y_pred) == len(y_true)
     if n_subsample is not None and n_subsample < len(y_pred):
@@ -106,7 +94,5 @@ def eval_regression(
         mae=float(metrics.mean_absolute_error(y_true=y_true, y_pred=y_pred)),
     )
     if y_pred_std is not None:
-        metrics_dict["mean_logp"] = float(
-            stats.norm(y_pred, y_pred_std).logpdf(y_true).mean()
-        )
+        metrics_dict["mean_logp"] = float(stats.norm(y_pred, y_pred_std).logpdf(y_true).mean())
     return metrics_dict
