@@ -133,6 +133,11 @@ For specific tasks:
 6. Find their actual docking scores using the `scripts/dock_tsv.py` script. To do this automatically, run `bash experiments/virtual_screening/zinc-predictions/score_top_predictions.sh`. Alternetively, you can split the files using `scripts/split_smiles_csv.sh` and score the predictions in parallel.
 7. To reproduce the results in the paper, run: `python scripts/results_virtual_screening.py`
 
+Note that one baseline (the nearest neighbour baseline) was added afterwards and is therefore a bit different.
+Code for it is under: `scripts/virtual_screening_nearest_neighbours`.
+Unfortunately we do not have the a full pipeline of bash scripts to reproduce these results,
+since they were done quickly.
+
 ### Molecular optimization (*de novo* design)
 
 1. Ensure that the dockstring dataset is downloaded (see [Data Preparation](#data-preparation))
