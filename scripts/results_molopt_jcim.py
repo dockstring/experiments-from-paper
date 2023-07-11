@@ -56,9 +56,9 @@ PLOT_OBJECTIVES = {
         "F2": "F2",
     },
     "dockstring-obj-pen": {
-        "F2_qed-pen-v3": "F2 QED",
-        "PPAR-all_qed-pen-v3": "Promiscious PPAR QED",
-        "JAK2-not-LCK-v2_qed-pen-v3": "Selective JAK2 QED",
+        "F2_qed-pen-v3": "F2",
+        "PPAR-all_qed-pen-v3": "Promiscious PPAR",
+        "JAK2-not-LCK-v2_qed-pen-v3": "Selective JAK2",
     },
     "toy-tasks": {
         "logP": "logP",
@@ -66,6 +66,25 @@ PLOT_OBJECTIVES = {
     },
 }
 
+BEST_MOL_OBJECTIVES = {
+    "dockstring-obj": {
+        "F2": "F2 (no QED)",
+        "F2_qed-pen-v3": "F2",
+        "PPAR-all_qed-pen-v3": "Promiscious PPAR",
+        "JAK2-not-LCK-v2_qed-pen-v3": "Selective JAK2",
+    },
+}
+N_BEST_MOL = 4
+
+SIM_MOL_OBJECTIVES = {
+    "dockstring-obj": {
+        "F2_qed-pen-v3": "F2",
+        "PPAR-all_qed-pen-v3": "Promiscious PPAR",
+        "JAK2-not-LCK-v2_qed-pen-v3": "Selective JAK2",
+    },
+}
+N_BEST_SIM_MOL = 1
+N_SIM_MOL = 3
 OBJECTIVE_DEPENDENCIES = {
     "F2_qed-pen-v3": ["F2"],
     "PPAR-all_qed-pen-v3": ["PPARA", "PPARD", "PPARG"],
@@ -140,13 +159,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="./plots/molopt",
+        default="./plots/molopt-jcim",
         help="Where to output plots.",
     )
     parser.add_argument(
         "--dataset_path",
         type=str,
-        default="./data/dockstring-dataset-extra-props.tsv",
+        default="./data/dockstring-excape/dockstring-dataset-extra-props.tsv",
         help="Path to (augmented) dataset.",
     )
     parser.add_argument("--n_top_mols", type=int, default=12, help="Number of top molecules to plot.")
@@ -165,6 +184,11 @@ if __name__ == "__main__":
         dest="latex",
         action="store_false",
         help="Flag to NOT output latex.",
+    )
+    parser.add_argument(
+        "--svg",
+        action="store_true",
+        help="Flag to output SVG images.",
     )
 
     args = parser.parse_args()
@@ -212,19 +236,24 @@ if __name__ == "__main__":
     # Results for all targets
     output_dir = Path(args.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
+    best_mols_dict = dict()
+    best_mols_info = dict()
     for obj_dict_name, obj_dict in PLOT_OBJECTIVES.items():
+        _fig_height = 3.6 if len(obj_dict) > 1 else 3.0
+        fig, axes_grid = plt.subplots(
+            nrows=len(args.plot_top_n),
+            ncols=len(obj_dict),
+            figsize=(7.0 / 3 * len(obj_dict), _fig_height),
+            sharex=True,
+            squeeze=False,
+        )
+        del _fig_height
+
         for n_idx, n in enumerate(args.plot_top_n):
             assert len(obj_dict) <= 3
-            fig, axes_grid = plt.subplots(
-                nrows=1,
-                ncols=len(obj_dict),
-                figsize=(5.50107 / 3 * len(obj_dict), 2.0),
-                sharex=True,
-                squeeze=False,
-            )
             legend_dict = dict()
             for obj_idx, obj in enumerate(obj_dict):
-                plt.sca(axes_grid[0, obj_idx])
+                plt.sca(axes_grid[n_idx, obj_idx])
 
                 # Best / nth best in dataset
                 if obj in MAXIMIZATION_OBJECTIVES:
@@ -261,20 +290,25 @@ if __name__ == "__main__":
 
                     # Actual plotting
                     plt.plot(
+                        list(range(len(md)))[::PLOT_SKIP],
                         md[::PLOT_SKIP],
                         label=METHOD_NAME_REMAP[method_name],
                         color=METHOD_TO_COLOR[method_name],
                     )
                     plt.fill_between(
-                        range(len(md[::PLOT_SKIP])),
+                        range(len(md))[::PLOT_SKIP],
                         mn[::PLOT_SKIP],
                         mx[::PLOT_SKIP],
                         alpha=0.3,
                         color=METHOD_TO_COLOR[method_name],
                     )
                 plt.title(f"{obj_dict[obj]} Top {n}")
-                plt.xlabel("Number of function evaluations.")
-                plt.ylabel(f"{obj_dict[obj]} objective")
+
+                if n_idx == len(args.plot_top_n) - 1:
+                    plt.xlabel("Number of function evaluations")
+
+                if obj_idx == 0:
+                    plt.ylabel("Objective")
 
                 # y limits
                 if dataset_best < -5:
@@ -312,97 +346,133 @@ if __name__ == "__main__":
                     else:
                         for col in OBJECTIVE_DEPENDENCIES[obj]:
                             best_obj_df[col] = [t[-1][col] for t in best_smiles_scores]
+                    best_obj_df["QED"] = [QED.qed(m) for m in best_mols]
+
+                    def _write_table(best_obj_df, file_path):
+                        float_format = "{:.2f}".format
+                        if args.latex:
+                            table_str = best_obj_df.to_latex(escape=False, float_format=float_format)
+                        else:
+                            table_str = best_obj_df.to_string(
+                                float_format=float_format,
+                            )
+                        with open(file_path, "w") as f:
+                            f.write(table_str)
+
+                    # Write intermediate table
+                    best_mols_dict[obj] = best_mols
+                    best_mols_info[obj] = [dict(row) for _, row in best_obj_df.iterrows()]
+                    _write_table(best_obj_df, output_dir / f"{obj}-top-table.txt")
+
+                    # Add extra descriptions
                     best_obj_df["Molecular Weight"] = [Descriptors.MolWt(m) for m in best_mols]
                     best_obj_df["logP"] = [Crippen.MolLogP(m) for m in best_mols]
                     best_obj_df["HBA"] = [AllChem.CalcNumHBA(m) for m in best_mols]
                     best_obj_df["HBD"] = [AllChem.CalcNumHBD(m) for m in best_mols]
-                    best_obj_df["QED"] = [QED.qed(m) for m in best_mols]
-
-                    float_format = "{:.3f}".format
-                    if args.latex:
-                        table_str = best_obj_df.to_latex(escape=False, float_format=float_format)
-                    else:
-                        table_str = best_obj_df.to_string(
-                            float_format=float_format,
-                        )
-                    with open(output_dir / f"{obj}-top-table.txt", "w") as f:
-                        f.write(table_str)
+                    _write_table(best_obj_df, output_dir / f"{obj}-top-table-FULL.txt")
 
                     # Draw
-                    img = Draw.MolsToGridImage(
-                        best_mols,
-                        legends=[f"Rank #{i+1}" for i in range(len(best_mols))],
-                        useSVG=False,
-                        subImgSize=(args.sub_img_size, args.sub_img_size),
-                    )
-                    img.save(output_dir / f"{obj}-bestmols.png")
                     # Previous code for SVG
                     # with open(output_dir / f"{obj}-bestmols.svg", "w") as f:
                     #     f.write(img)
 
-                    # Scaffolds
-                    if args.scaffolds:
-                        best_scaffolds = [
-                            Chem.MolToSmiles(
-                                MurckoScaffold.MakeScaffoldGeneric(
-                                    MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(s))
-                                )
-                            )
-                            for _, s, _ in best_smiles_scores
-                        ]
-                        scaffolds_in_common = set(best_scaffolds) & train_set_scaffolds
-                        if len(scaffolds_in_common) == 0:
-                            print(f"{obj}: no common scaffolds")
-                        else:
-                            scaffolds_in_common = []
-                            for i, sc in enumerate(best_scaffolds):
-                                if sc in train_set_scaffolds:
-                                    scaffolds_in_common.append(i + 1)
-                            print(f"{obj}: scaffolds in common for ranks {scaffolds_in_common}")
+        # Figure saving
+        _all_labels = list(legend_dict.keys())
+        if axes_grid.shape[1] == 1:
+            plt.subplots_adjust(bottom=0.2, wspace=0.4, left=0.2, right=0.95, hspace=0.2, top=0.95)
+            bbox_legend = (0.5, 0.1)
+        else:
+            plt.subplots_adjust(bottom=0.13, left=0.07, right=0.98, hspace=0.15, top=0.95)
+            bbox_legend = (0.5, 0.06)
+        fig.legend(
+            [legend_dict[l] for l in _all_labels],
+            _all_labels,
+            ncol={1: 2, 2: 5, 3: 7}[len(obj_dict)],
+            loc="upper center",
+            bbox_to_anchor=bbox_legend,
+        )
+        del _all_labels
+        # plt.tight_layout()
+        plt.savefig(output_dir / f"top{n}_{obj_dict_name}.pdf")
+        plt.close()
 
-                    # Fingerprints
-                    if args.fingerprints and obj not in NO_TRAINSIM:
-                        N_SIM = 4
+    # Make images of best molecules
+    for obj_dict_name, obj_dict in BEST_MOL_OBJECTIVES.items():
+        all_best_mols = []
+        all_best_mol_labels = []
+
+        for obj_idx, (obj, obj_name) in enumerate(obj_dict.items()):
+            all_best_mols.extend(best_mols_dict[obj][:N_BEST_MOL])
+            for rank, d in enumerate(best_mols_info[obj][:N_BEST_MOL]):
+                d = dict(d)
+                label = f"Obj={d.pop('objective'):.1f}\n"
+                label += ", ".join(f"{k}={v:.1f}" for k, v in d.items())
+                all_best_mol_labels.append(label)
+                del label
+
+        img = Draw.MolsToGridImage(
+            all_best_mols,
+            legends=all_best_mol_labels,
+            useSVG=args.svg,
+            subImgSize=(300, 200),
+            molsPerRow=N_BEST_MOL,
+        )
+        if args.svg:
+            with open(output_dir / f"{obj_dict_name}-bestmols.svg", "w") as f_out:
+                f_out.write(img)
+        else:
+            img.save(output_dir / f"{obj_dict_name}-bestmols.png")
+
+        # Save the SMILES
+        with open(output_dir / f"{obj_dict_name}-bestmols.csv", "w") as f_out:
+            f_out.write("\n".join([Chem.MolToSmiles(m) for m in all_best_mols]))
+
+    # Images of similar train set molecules
+    if args.fingerprints:
+        sim_mols_dict = dict()
+        for obj_dict_name, obj_dict in SIM_MOL_OBJECTIVES.items():
+            for obj_idx, (obj, obj_name) in enumerate(obj_dict.items()):
+                # Fingerprints
+                if args.fingerprints and obj not in NO_TRAINSIM:
+                    N_SIM = N_SIM_MOL
+                    best_mols = best_mols_dict[obj]
+                    for i, mol in enumerate(best_mols):
                         mol_list = []
                         mol_legends = []
-                        for i, mol in enumerate(best_mols):
-                            mol_list.append(mol)
-                            mol_legends.append(f"Rank #{i+1} (obj={best_obj_df.objective.values[i]:.3f})")
-                            fp = _get_numpy_fp(Chem.MolToSmiles(mol)).reshape(1, -1)
-                            fp_sims = batch_tanimoto_numpy(train_set_fingerprints, fp).flatten()
-                            argsort = np.argsort(-fp_sims)
-                            for sim_rank, j in enumerate(argsort[:N_SIM]):
-                                mol_list.append(Chem.MolFromSmiles(df["smiles"].values[j]))
-                                mol_legends.append(
-                                    f"Train mol #{sim_rank+1} (sim={fp_sims[j]:.3f}, obj={df[obj].values[j]:.3f})"
-                                )
-                        img = Draw.MolsToGridImage(
-                            mol_list,
-                            legends=mol_legends,
-                            useSVG=False,
-                            molsPerRow=N_SIM + 1,
-                            subImgSize=(args.sub_img_size, args.sub_img_size),
-                        )
-                        img.save(output_dir / f"{obj}-bestmols-trainset-sim.png")
-                        # with open(
-                        #     output_dir / f"{obj}-bestmols-trainset-sim.svg", "w"
-                        # ) as f:
-                        #     f.write(img)
+                        fp = _get_numpy_fp(Chem.MolToSmiles(mol)).reshape(1, -1)
+                        fp_sims = batch_tanimoto_numpy(train_set_fingerprints, fp).flatten()
+                        argsort = np.argsort(-fp_sims)
+                        for sim_rank, j in enumerate(argsort[:N_SIM]):
+                            mol_list.append(Chem.MolFromSmiles(df["smiles"].values[j]))
+                            mol_legends.append(f"Obj={df[obj].values[j]:.1f}, Sim={fp_sims[j]:.2f}")
+                        sim_mols_dict[(obj, i)] = mol_list, mol_legends
 
-            # Figure saving
-            _all_labels = list(legend_dict.keys())
-            fig.legend(
-                [legend_dict[l] for l in _all_labels],
-                _all_labels,
-                ncol={1: 2, 2: 4, 3: 6}[len(obj_dict)],
-                loc="upper center",
-                bbox_to_anchor=(0.5, 0.15),
+            # all mols for image:
+            all_draw_mols = []
+            all_draw_labels = []
+            for obj_idx, (obj, obj_name) in enumerate(obj_dict.items()):
+                for i in range(N_BEST_SIM_MOL):
+                    all_draw_mols.append(best_mols_dict[obj][i])
+                    all_draw_labels.append(f"Obj={best_mols_info[obj][i]['objective']:.1f}")
+            for sim_rank in range(N_SIM_MOL):
+                for obj_idx, (obj, obj_name) in enumerate(obj_dict.items()):
+                    for mol_rank in range(N_BEST_SIM_MOL):
+                        all_draw_mols.append(sim_mols_dict[(obj, mol_rank)][0][sim_rank])
+                        all_draw_labels.append(sim_mols_dict[(obj, mol_rank)][1][sim_rank])
+
+            img = Draw.MolsToGridImage(
+                all_draw_mols,
+                legends=all_draw_labels,
+                useSVG=args.svg,
+                subImgSize=(300, 200),
+                molsPerRow=N_BEST_SIM_MOL * len(obj_dict),
             )
-            del _all_labels
-            if axes_grid.shape[1] == 1:
-                plt.subplots_adjust(bottom=0.3, wspace=0.4, left=0.3, right=0.95)
+            if args.svg:
+                with open(output_dir / f"{obj_dict_name}-train-sim-mols.svg", "w") as f_out:
+                    f_out.write(img)
             else:
-                plt.subplots_adjust(bottom=0.3, wspace=0.4, left=0.1, right=0.95)
-            # plt.tight_layout()
-            plt.savefig(output_dir / f"top{n}_{obj_dict_name}.pdf")
-            plt.close()
+                img.save(output_dir / f"{obj_dict_name}-train-sim-mols.png")
+
+            # Save the SMILES
+            with open(output_dir / f"{obj_dict_name}-train-sim-mols.csv", "w") as f_out:
+                f_out.write("\n".join([Chem.MolToSmiles(m) for m in all_draw_mols]))
